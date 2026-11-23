@@ -20,7 +20,7 @@
 | --- | --- | --- | --- |
 | 7 | 多轮记忆 | `ChatMemory`、`MessageChatMemoryAdvisor` | 待做 |
 | 8 | 持久化记忆 | `BaseCheckpointSaver`、`FileSystemSaver`、Redis / MySQL Saver | ✅ |
-| 9 | RAG 入门 | `EmbeddingModel`、`VectorStore`、`QuestionAnswerAdvisor` | 待做 |
+| 9 | RAG 入门 | `EmbeddingModel`、`VectorStore`、`QuestionAnswerAdvisor` | ✅ |
 | 10 | 文档入库 | `DocumentReader`、切分、向量化 | 待做 |
 
 ## 阶段三：Agent 与编排

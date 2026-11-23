@@ -26,8 +26,13 @@ demo:
   lesson: 0
   # 课时 6 的检查点目录（相对启动目录）；删除该目录即可清空持久化记忆
   checkpoint-dir: ./data/checkpoints
+  # 课时 7：RAG 每次检索的片段数
+  rag:
+    top-k: 4
 
 logging:
   level:
     root: INFO
     com.example.springaialibaba: DEBUG
+    # SimpleVectorStore 会为每个片段打印一行 INFO，学习时太吵
+    org.springframework.ai.vectorstore.SimpleVectorStore: WARN

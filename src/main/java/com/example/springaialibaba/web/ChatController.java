@@ -1,10 +1,13 @@
 package com.example.springaialibaba.web;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.alibaba.cloud.ai.graph.RunnableConfig;
 import com.alibaba.cloud.ai.graph.agent.ReactAgent;
 import com.example.springaialibaba.model.TravelPlan;
+import com.example.springaialibaba.rag.RagAnswer;
+import com.example.springaialibaba.rag.RagService;
 import com.example.springaialibaba.web.dto.ChatReply;
 import com.example.springaialibaba.web.dto.ChatRequest;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,13 +33,16 @@ public class ChatController {
     private final ChatClient chatClient;
     private final ReactAgent weatherAgent;
     private final ReactAgent persistentWeatherAgent;
+    private final RagService ragService;
 
     public ChatController(ChatClient chatClient,
             @Qualifier("weatherAgent") ReactAgent weatherAgent,
-            @Qualifier("persistentWeatherAgent") ReactAgent persistentWeatherAgent) {
+            @Qualifier("persistentWeatherAgent") ReactAgent persistentWeatherAgent,
+            RagService ragService) {
         this.chatClient = chatClient;
         this.weatherAgent = weatherAgent;
         this.persistentWeatherAgent = persistentWeatherAgent;
+        this.ragService = ragService;
     }
 
     /** 课时 1：GET /api/chat?message=你好 */
@@ -93,6 +99,22 @@ public class ChatController {
                 .user(prompt)
                 .call()
                 .entity(TravelPlan.class);
+    }
+
+    /** 课时 7：RAG 问答，返回答案与命中的知识来源 */
+    @GetMapping("/rag")
+    public RagAnswer rag(@RequestParam("question") String question) {
+        requireText(question);
+        return ragService.ask(question);
+    }
+
+    /** 课时 7：只做向量检索，不调用大模型，便于观察命中结果 */
+    @GetMapping("/rag/search")
+    public List<RagAnswer.Source> ragSearch(
+            @RequestParam("question") String question,
+            @RequestParam(name = "topK", defaultValue = "4") int topK) {
+        requireText(question);
+        return ragService.search(question, topK);
     }
 
     private ChatReply doAgentChat(ReactAgent agent, ChatRequest request) throws Exception {

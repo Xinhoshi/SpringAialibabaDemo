@@ -32,6 +32,7 @@ public class LearningBanner implements ApplicationRunner {
         log.info("   GET  http://localhost:8080/                    (课时 4 演示页)");
         log.info("   GET  http://localhost:8080/api/chat?message=你好");
         log.info("   GET  http://localhost:8080/api/plan?city=杭州   (结构化输出)");
+        log.info("   GET  http://localhost:8080/api/rag?question=... (RAG)");
         log.info("   POST http://localhost:8080/api/chat/stream   (SSE)");
         log.info("   POST http://localhost:8080/api/agent/chat    (ReactAgent)");
         log.info("   POST http://localhost:8080/api/agent/persistent/chat (持久化记忆)");

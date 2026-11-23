@@ -2,7 +2,7 @@
 
 一个**按课时递进**的 Spring AI Alibaba 示例工程：先跑通最小对话，再逐步加上工具调用、Agent、记忆等能力。
 
-当前已实现 3 个课时，每个课时都可以单独启动运行：
+当前已实现 7 个课时，每个课时都可以单独启动运行：
 
 | 课时 | 内容 | 核心 API |
 | --- | --- | --- |
@@ -12,6 +12,7 @@
 | 4 | 流式输出（SSE）与浏览器演示 | `.stream().content()` + `Flux<String>` |
 | 5 | 结构化输出 | `.entity(Class)` / `.responseEntity(...)` |
 | 6 | 持久化记忆 | `FileSystemSaver` + `threadId` |
+| 7 | RAG 检索增强生成 | `EmbeddingModel` + `VectorStore` + 文档切块 |
 
 ## 技术栈
 
@@ -41,7 +42,13 @@ SpringAialibabaDemo
    │  │  ├─ Lesson03ReactAgent.java    # 课时 3
    │  │  ├─ Lesson04Streaming.java     # 课时 4
    │  │  ├─ Lesson05StructuredOutput.java # 课时 5
-   │  │  └─ Lesson06PersistentMemory.java # 课时 6
+   │  │  ├─ Lesson06PersistentMemory.java # 课时 6
+   │  │  └─ Lesson07Rag.java            # 课时 7
+   │  ├─ embedding/LocalHashingEmbeddingModel.java # 本地离线 embedding
+   │  ├─ rag
+   │  │  ├─ KnowledgeBase.java         # 加载/切块/写入向量库
+   │  │  ├─ RagService.java            # 检索 + 拼上下文 + 生成
+   │  │  └─ RagAnswer.java
    │  ├─ model/TravelPlan.java         # 结构化输出的目标类型
    │  ├─ tool/WeatherTools.java        # @Tool 工具示例（模拟天气数据）
    │  └─ web
@@ -51,6 +58,7 @@ SpringAialibabaDemo
    └─ resources
       ├─ application.yml
       ├─ application-local.yml         # 本地 Key（已 gitignore）
+      ├─ knowledge/*.md                # 课时 7 的知识库
       └─ static/index.html             # 课时 4 浏览器演示页
 ```
 
@@ -133,13 +141,14 @@ spring:
 # 只启动 Web 服务
 .\scripts\run.ps1
 
-# 运行课时 1 / 2 / 3 / 4 / 5 / 6
+# 运行课时 1 / 2 / 3 / 4 / 5 / 6 / 7
 .\scripts\run.ps1 -Lesson 1
 .\scripts\run.ps1 -Lesson 2
 .\scripts\run.ps1 -Lesson 3
 .\scripts\run.ps1 -Lesson 4
 .\scripts\run.ps1 -Lesson 5
 .\scripts\run.ps1 -Lesson 6
+.\scripts\run.ps1 -Lesson 7
 ```
 
 脚本会自动选择 JDK 17（本机默认 `JAVA_HOME` 指向 JDK 8）和 Maven 3.8.4（本机默认 `mvn` 是 3.5.3，版本过低）。
@@ -153,9 +162,9 @@ D:\environment\apache-maven-3.8.4\bin\mvn.cmd spring-boot:run "-Dspring-boot.run
 
 ### 方式 C：IDE
 
-用 IDEA 打开 `pom.xml`，把 Project SDK 设为 17，然后在 `application.yml` 里把 `demo.lesson` 改成 `1/2/3/4/5/6` 后运行主类。
+用 IDEA 打开 `pom.xml`，把 Project SDK 设为 17，然后在 `application.yml` 里把 `demo.lesson` 改成 `1/2/3/4/5/6/7` 后运行主类。
 
-## 三、六个课时分别看什么
+## 三、七个课时分别看什么
 
 ### 课时 1：基础对话
 
@@ -254,6 +263,36 @@ ReactAgent agent = ReactAgent.builder()
 - 生产环境：把 `FileSystemSaver` 换成 `RedisSaver` / `MysqlSaver` / `PostgresSaver`，仍是 `.saver(...)`
 - 注意：记忆的隔离键始终是 `threadId`
 
+### 课时 7：RAG 检索增强生成
+
+- 入口：`Lesson07Rag`
+- 知识库：`src/main/resources/knowledge/*.md`（项目专属资料）
+- 观察：
+  - 同一个问题，**不检索**时模型回答“不知道”
+  - **检索后**模型能准确回答内部代号 `Aurora-7`、检查点目录 `data/checkpoints` 等知识库内容
+  - 日志会打印命中的来源文件和相似度分数
+- RAG 流程：
+  1. 文档按二级标题切块
+  2. 向量化（本地哈希 embedding，1024 维）
+  3. 写入 `SimpleVectorStore`
+  4. 用问题检索 topK=4
+  5. 把片段拼进提示词，要求模型只依据资料回答
+- 关键代码：
+
+```java
+List<Document> documents = vectorStore.similaritySearch(
+        SearchRequest.builder().query(question).topK(4).build());
+
+String answer = chatClient.prompt()
+        .system("只能依据资料回答，资料没有的信息就说不知道")
+        .user("【资料】\n" + buildContext(documents) + "\n\n【问题】\n" + question)
+        .call()
+        .content();
+```
+
+- 为什么用本地哈希模型：DeepSeek 没有 embedding 接口，本课用字符 bigram 哈希做离线演示。生产可以替换成 DashScope `text-embedding-v3`、OpenAI `text-embedding-3-small` 或本地 ONNX 模型，只需换一个 `EmbeddingModel` Bean，上层代码不变。
+- 调参：`demo.rag.top-k` 控制检索片段数；知识库文件放在 `resources/knowledge/`。
+
 ## 四、Web 接口
 
 启动后：
@@ -263,6 +302,8 @@ ReactAgent agent = ReactAgent.builder()
 | GET | `/` | 课时 4 的流式输出演示页 |
 | GET | `/api/chat?message=你好` | 课时 1 的普通对话 |
 | GET | `/api/plan?city=杭州&days=2` | 课时 5 的结构化输出 |
+| GET | `/api/rag?question=...` | 课时 7 的 RAG 问答 |
+| GET | `/api/rag/search?question=...` | 只做检索，观察命中片段 |
 | POST | `/api/chat/stream` | 流式输出（SSE） |
 | POST | `/api/agent/chat` | 课时 3 的 ReactAgent，支持多轮 |
 | POST | `/api/agent/persistent/chat` | 课时 6 的持久化记忆 Agent |
@@ -291,6 +332,9 @@ Invoke-RestMethod -Method Post http://localhost:8080/api/agent/chat `
 
 # 结构化输出（curl 能正确显示 UTF-8 中文）
 curl.exe "http://localhost:8080/api/plan?city=%E6%9D%AD%E5%B7%9E&days=2&budget=1500"
+
+# RAG 问答（编码后的“检查点目录”）
+curl.exe "http://localhost:8080/api/rag?question=%E6%A3%80%E6%9F%A5%E7%82%B9%E7%9B%AE%E5%BD%95"
 
 # 持久化记忆：同一个 conversationId 连续两次
 function Post-Json($url, $obj) {
@@ -349,9 +393,16 @@ Key 没配置或已失效。检查 `$env:DEEPSEEK_API_KEY` 是否在**同一个�
 
 这是客户端解码问题（响应无 charset 时按 Latin-1 处理），服务端数据正常。用 `curl.exe`、PowerShell 7，或读取原始 UTF-8 字节。
 
+**10. RAG 答非所问 / 检索不到**
+
+- 确认 `target/classes/knowledge/` 下有你的 Markdown 文件；
+- 调大 `demo.rag.top-k`（例如 6），让更多片段进入上下文；
+- 本地哈希 embedding 只擅长字面相似，换一种说法可能检索不到；生产请换成真正的语义 embedding；
+- 切块粒度也会影响效果：单片太大容易稀释相关性，太小会丢上下文。
+
 ## 六、下一步
 
-见 [docs/LEARNING-PATH.md](docs/LEARNING-PATH.md)。建议顺序：RAG → Graph 编排 → 多 Agent → Hooks / 可观测性。
+见 [docs/LEARNING-PATH.md](docs/LEARNING-PATH.md)。建议顺序：Graph 编排 → 多 Agent → Hooks / 可观测性。
 
 ## 参考
 
