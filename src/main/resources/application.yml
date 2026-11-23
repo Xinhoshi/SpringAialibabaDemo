@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: local
+  application:
+    name: spring-ai-alibaba-demo
+  ai:
+    deepseek:
+      # 推荐用环境变量注入，不要把真实 Key 提交到代码仓库
+      # PowerShell: $env:DEEPSEEK_API_KEY="sk-xxx"
+      api-key: ${DEEPSEEK_API_KEY:sk-not-configured}
+      chat:
+        options:
+          # deepseek-chat：通用对话，支持工具调用（本项目使用）
+          # deepseek-reasoner：推理模型，不支持工具调用，不要用于课时 2/3
+          model: deepseek-flash
+          temperature: 0.7
+          # 结构化输出（课时 5）会生成较长的 JSON，1024 容易被截断
+          max-tokens: 2048
+
+# 学习开关：启动时执行指定的课时（0 表示不执行，只启动 Web 服务）
+# 例如：mvn spring-boot:run -Dspring-boot.run.arguments="--demo.lesson=1"
+demo:
+  lesson: 0
+  # 课时 6 的检查点目录（相对启动目录）；删除该目录即可清空持久化记忆
+  checkpoint-dir: ./data/checkpoints
+
+logging:
+  level:
+    root: INFO
+    com.example.springaialibaba: DEBUG

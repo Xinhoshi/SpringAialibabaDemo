@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>课时 4 · 流式输出</title>
+    <style>
+        :root {
+            --bg: #f4f6fb;
+            --card: #ffffff;
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --accent: #2563eb;
+            --accent-dark: #1d4ed8;
+            --danger: #dc2626;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(1200px 600px at 50% -10%, #dbeafe 0%, var(--bg) 55%);
+            color: var(--ink);
+            font-family: "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+        }
+
+        .page {
+            max-width: 880px;
+            margin: 0 auto;
+            padding: 48px 20px 64px;
+        }
+
+        header { margin-bottom: 28px; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: #dbeafe;
+            color: var(--accent-dark);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+
+        h1 {
+            margin: 14px 0 8px;
+            font-size: 34px;
+            letter-spacing: -.02em;
+        }
+
+        h1 span {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .sub {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 18px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .05);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        textarea {
+            width: 100%;
+            resize: vertical;
+            min-height: 84px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            font: inherit;
+            line-height: 1.6;
+            color: var(--ink);
+            outline: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px #dbeafe;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        button {
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform .05s, background .15s, border-color .15s;
+        }
+
+        button:hover:not(:disabled) { border-color: #cbd5e1; background: #f8fafc; }
+        button:active:not(:disabled) { transform: translateY(1px); }
+        button:disabled { opacity: .55; cursor: not-allowed; }
+
+        button.primary {
+            border-color: var(--accent);
+            background: var(--accent);
+            color: #fff;
+        }
+
+        button.primary:hover:not(:disabled) {
+            background: var(--accent-dark);
+            border-color: var(--accent-dark);
+        }
+
+        button.ghost { margin-left: auto; color: var(--muted); }
+
+        .output-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .meta {
+            font-weight: 500;
+            color: var(--accent-dark);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .output {
+            margin: 0;
+            min-height: 180px;
+            max-height: 420px;
+            overflow: auto;
+            padding: 16px;
+            border-radius: 12px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: "Cascadia Code", "Consolas", "Microsoft YaHei", monospace;
+            font-size: 14px;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .output.error { color: #fecaca; }
+
+        footer {
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.8;
+        }
+
+        code {
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: #e8eefc;
+            color: var(--accent-dark);
+            font-family: "Cascadia Code", Consolas, monospace;
+        }
+
+        @media (max-width: 560px) {
+            .page { padding-top: 28px; }
+            h1 { font-size: 26px; }
+            button.ghost { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="badge">LESSON 04</div>
+        <h1>流式输出 <span>Streaming</span></h1>
+        <p class="sub">同一个问题，对比「等全部生成完再显示」与「边生成边显示」。</p>
+    </header>
+
+    <section class="card">
+        <label for="message">你的问题</label>
+        <textarea id="message" rows="3">用 5 句话介绍流式输出给聊天应用带来的体验提升。</textarea>
+        <div class="actions">
+            <button id="streamBtn" class="primary">流式发送</button>
+            <button id="normalBtn">普通发送</button>
+            <button id="clearBtn" class="ghost">清空</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="output-head">
+            <span>模型输出</span>
+            <span id="meta" class="meta">等待发送</span>
+        </div>
+        <pre id="output" class="output">输出会显示在这里…</pre>
+    </section>
+
+    <footer>
+        <code>POST /api/chat/stream</code> 返回 SSE 流；<code>GET /api/chat</code> 为同步调用。
+        流式输出不会减少总耗时，但能显著降低首字等待时间。
+    </footer>
+</main>
+
+<script>
+    const messageEl = document.getElementById('message');
+    const outputEl = document.getElementById('output');
+    const metaEl = document.getElementById('meta');
+    const streamBtn = document.getElementById('streamBtn');
+    const normalBtn = document.getElementById('normalBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    let busy = false;
+
+    function setBusy(value) {
+        busy = value;
+        streamBtn.disabled = value;
+        normalBtn.disabled = value;
+    }
+
+    function resetOutput(placeholder) {
+        outputEl.classList.remove('error');
+        outputEl.textContent = placeholder || '';
+    }
+
+    function showError(message) {
+        outputEl.classList.add('error');
+        outputEl.textContent = '调用失败：' + message;
+    }
+
+    // SSE 事件格式：data:xxx\n\n（模型分片里若有换行，会变成多行 data:）
+    function parseSseData(rawEvent) {
+        const parts = [];
+        for (const line of rawEvent.split(/\r?\n/)) {
+            if (line.startsWith('data:')) {
+                parts.push(line.slice(5).replace(/^ /, ''));
+            }
+        }
+        return parts.join('\n');
+    }
+
+    streamBtn.addEventListener('click', async () => {
+        if (busy) return;
+        const message = messageEl.value.trim();
+        if (!message) {
+            messageEl.focus();
+            return;
+        }
+
+        setBusy(true);
+        resetOutput('');
+        metaEl.textContent = '请求中…';
+        const started = performance.now();
+        let chunkCount = 0;
+        let fullText = '';
+
+        try {
+            const response = await fetch('/api/chat/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                let match;
+                while ((match = buffer.match(/\r?\n\r?\n/)) !== null) {
+                    const rawEvent = buffer.slice(0, match.index);
+                    buffer = buffer.slice(match.index + match[0].length);
+
+                    const text = parseSseData(rawEvent);
+                    if (!text) continue;
+
+                    chunkCount++;
+                    fullText += text;
+                    outputEl.textContent = fullText;
+                    outputEl.scrollTop = outputEl.scrollHeight;
+                    metaEl.textContent = chunkCount + ' 个 chunk · '
+                        + Math.round(performance.now() - started) + ' ms';
+                }
+            }
+
+            metaEl.textContent = '完成 · ' + chunkCount + ' 个 chunk · '
+                + Math.round(performance.now() - started) + ' ms';
+        } catch (error) {
+            showError(error.message);
+            metaEl.textContent = '失败';
+        } finally {
+            setBusy(false);
+        }
+    });
+
+    normalBtn.addEventListener('click', async () => {
+        if (busy) return;
+        const message = messageEl.value.trim();
+        if (!message) {
+            messageEl.focus();
+            return;
+        }
+
+        setBusy(true);
+        resetOutput('');
+        metaEl.textContent = '请求中（等待完整回答）…';
+        const started = performance.now();
+
+        try {
+            const response = await fetch('/api/chat?message=' + encodeURIComponent(message));
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            const data = await response.json();
+            outputEl.textContent = data.answer;
+            metaEl.textContent = '完成 · 一次性返回 · '
+                + Math.round(performance.now() - started) + ' ms';
+        } catch (error) {
+            showError(error.message);
+            metaEl.textContent = '失败';
+        } finally {
+            setBusy(false);
+        }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        resetOutput('输出会显示在这里…');
+        metaEl.textContent = '等待发送';
+    });
+</script>
+</body>
+</html>
